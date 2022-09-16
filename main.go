@@ -171,7 +171,7 @@ func main() {
 		cmdArgs = append(cmdArgs, url)
 	} else {
 		// Exe + Script + "FQDN"
-		cmdArgs = append(cmdArgs, config.Browser[config.Domain[selector].Browser].Script, "\""+url+"\"")
+		cmdArgs = append(cmdArgs, config.Browser[config.Domain[selector].Browser].Script, url)
 	}
 
 	debugOutput(config.Debug, command, cmdArgs)
