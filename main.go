@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"sort"
 
+	"github.com/adrg/xdg"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -20,16 +21,6 @@ func debugOutput(debug bool, a ...interface{}) (n int, err error) {
 	}
 	return fmt.Fprintln(os.Stdout, a...)
 	//return fmt.Fprintln(os.Stdout, append([]interface{}{"[Debug]"}, a...))
-}
-
-func getBinaryDirectory(args []string) (dir string, err error) {
-	if len(args) < 1 {
-		err = errors.New("too few arguments")
-		return
-	}
-
-	dir, err = filepath.Abs(filepath.Dir(args[0]))
-	return dir, err
 }
 
 func sortConfigBrowserPriority(input []domain) (output []domain, err error) {
@@ -95,7 +86,7 @@ func getFqdnFromUrl(url string, config configuration) (protocol string, fqdn str
 }
 
 func main() {
-	dir, err := getBinaryDirectory(os.Args)
+	dir, err := homedir.Dir()
 	if err != nil {
 		fmt.Println(err)
 		fmt.Scanln()
@@ -105,8 +96,12 @@ func main() {
 	// Load config
 	var config configuration
 	viper.AddConfigPath(".")
+	viper.AddConfigPath(xdg.ConfigHome)
+	for _, configDir := range xdg.ConfigDirs {
+		viper.AddConfigPath(configDir)
+	}
 	viper.AddConfigPath(dir)
-	viper.SetConfigName("config")
+	viper.SetConfigName("browserselector")
 	err = viper.ReadInConfig()
 	if err != nil {
 		fmt.Println(err)

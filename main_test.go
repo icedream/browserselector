@@ -3,73 +3,9 @@
 package main
 
 import (
-	"path/filepath"
 	"reflect"
-	"runtime"
 	"testing"
 )
-
-func Test_getBinaryDirectory(t *testing.T) {
-	type args struct {
-		args []string
-	}
-	type test struct {
-		name    string
-		args    args
-		wantDir string
-		wantErr bool
-	}
-
-	currentDir, _ := filepath.Abs(filepath.Dir(""))
-
-	tests := []test{
-		{
-			name:    "empty input",
-			args:    args{[]string{}},
-			wantDir: "",
-			wantErr: true,
-		},
-		{
-			name:    "empty string",
-			args:    args{[]string{""}},
-			wantDir: currentDir,
-			wantErr: false,
-		},
-	}
-
-	if runtime.GOOS == "windows" {
-		windows := test{
-			name:    "test path windows",
-			args:    args{[]string{"C:\\test\\main.exe"}},
-			wantDir: "C:\\test",
-			wantErr: false,
-		}
-		tests = append(tests, windows)
-	}
-
-	if runtime.GOOS == "linux" {
-		linux := test{
-			name:    "test path linux",
-			args:    args{[]string{"/tmp/test/main"}},
-			wantDir: "/tmp/test",
-			wantErr: false,
-		}
-		tests = append(tests, linux)
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotDir, err := getBinaryDirectory(tt.args.args)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getBinaryDirectory() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if gotDir != tt.wantDir {
-				t.Errorf("getBinaryDirectory() = %v, want %v", gotDir, tt.wantDir)
-			}
-		})
-	}
-}
 
 func Test_sortConfigBrowserPriority(t *testing.T) {
 	type args struct {
