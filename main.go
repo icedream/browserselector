@@ -177,6 +177,12 @@ func main() {
 		fmt.Scanln()
 		os.Exit(1)
 	}
+	err = cmd.Process.Release()
+	if err != nil {
+		fmt.Println(err)
+		fmt.Scanln()
+		os.Exit(1)
+	}
 
 	// Stop execution to show debug output
 	if config.Debug {
