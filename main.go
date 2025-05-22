@@ -6,7 +6,9 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 
 	"github.com/adrg/xdg"
@@ -84,7 +86,13 @@ func run() (err error) {
 	// Load config
 	var config configuration
 	viper.AddConfigPath(".")
-	viper.AddConfigPath(xdg.ConfigHome)
+	if len(xdg.ConfigHome) != 0 {
+		viper.AddConfigPath(xdg.ConfigHome)
+	} else {
+		if runtime.GOOS != "windows" {
+			viper.AddConfigPath(filepath.Join(dir, ".config"))
+		}
+	}
 	for _, configDir := range xdg.ConfigDirs {
 		viper.AddConfigPath(configDir)
 	}
