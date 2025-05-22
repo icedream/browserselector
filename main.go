@@ -4,7 +4,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
@@ -13,15 +12,8 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"github.com/sqweek/dialog"
 )
-
-func debugOutput(debug bool, a ...interface{}) (n int, err error) {
-	if !debug {
-		return
-	}
-	return fmt.Fprintln(os.Stdout, a...)
-	//return fmt.Fprintln(os.Stdout, append([]interface{}{"[Debug]"}, a...))
-}
 
 func sortConfigBrowserPriority(input []domain) (output []domain, err error) {
 	sort.Slice(input[:], func(i, j int) bool {
@@ -32,20 +24,15 @@ func sortConfigBrowserPriority(input []domain) (output []domain, err error) {
 }
 
 func getUrl(args []string, config configuration) (url string, err error) {
-	debugOutput(config.Debug, "Arguments:", args)
-
 	if len(args) < 1 {
 		err = errors.New("missing parameters")
 		return
 	}
 
 	for index, element := range args {
-		debugOutput(config.Debug, "Element:", index, element)
 		start, err := regexp.Compile("(http|https|ftp|ftps|ftpes|file).*")
 		if err != nil {
-			fmt.Println(err)
-			fmt.Scanln()
-			os.Exit(1)
+			return "", err
 		}
 		if start.MatchString(element) {
 			url = args[index]
@@ -58,7 +45,6 @@ func getUrl(args []string, config configuration) (url string, err error) {
 		return
 	}
 
-	debugOutput(config.Debug, "URL: ", url)
 	return
 }
 
@@ -71,8 +57,6 @@ func getFqdnFromUrl(url string, config configuration) (protocol string, fqdn str
 	}
 	matches := r.FindStringSubmatch(url)
 
-	debugOutput(config.Debug, "Matches: ", matches)
-
 	if len(matches) < 3 {
 		err = errors.New("invalid url: " + url)
 		return
@@ -81,15 +65,19 @@ func getFqdnFromUrl(url string, config configuration) (protocol string, fqdn str
 	protocol = matches[1]
 	fqdn = matches[2]
 
-	debugOutput(config.Debug, "Protocol: ", protocol, " | FQDN: ", fqdn)
 	return
 }
 
 func main() {
+	if err := run(); err != nil {
+		dialog.Message("Failed to run: %s", err).Error()
+		os.Exit(1)
+	}
+}
+
+func run() (err error) {
 	dir, err := homedir.Dir()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 
@@ -104,36 +92,26 @@ func main() {
 	viper.SetConfigName("browserselector")
 	err = viper.ReadInConfig()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 	err = viper.Unmarshal(&config)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 
 	config.Domain, err = sortConfigBrowserPriority(config.Domain)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 
 	// Get url from arguments
 	url, err := getUrl(os.Args, config)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 
 	_, fqdn, err := getFqdnFromUrl(url, config)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		return
 	}
 
@@ -143,18 +121,13 @@ func main() {
 		match, _ := regexp.MatchString(element.Regex, fqdn)
 		if match {
 			selector = index
-			debugOutput(config.Debug, "Match found", element.Browser, "Priority:", element.Priority, "Regex:", element.Regex)
 			break
 		}
 	}
 
 	// Check if browser exists
 	if _, ok := config.Browser[config.Domain[selector].Browser]; !ok {
-		if config.Debug {
-			fmt.Println("Browser not found in configuration:", config.Domain[selector].Browser)
-			fmt.Scanln()
-		}
-		os.Exit(1)
+		return errors.New("no such browser defined: " + config.Domain[selector].Browser)
 	}
 
 	// Start browser
@@ -169,24 +142,19 @@ func main() {
 		cmdArgs = append(cmdArgs, config.Browser[config.Domain[selector].Browser].Script, url)
 	}
 
-	debugOutput(config.Debug, command, cmdArgs)
 	cmd := exec.Command(command, cmdArgs...)
 	err = cmd.Start()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		os.Exit(1)
 	}
 	err = cmd.Process.Release()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Scanln()
 		os.Exit(1)
 	}
 
-	// Stop execution to show debug output
-	if config.Debug {
-		fmt.Println()
-		fmt.Scanln()
-	}
+	proc := cmd.Process
+
+	err = proc.Release()
+
+	return
 }
