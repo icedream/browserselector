@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"syscall"
 
 	"github.com/adrg/xdg"
 	"github.com/mitchellh/go-homedir"
@@ -139,7 +140,7 @@ func run() (err error) {
 	}
 
 	// Start browser
-	var command = config.Browser[config.Domain[selector].Browser].Exec
+	command := config.Browser[config.Domain[selector].Browser].Exec
 	var cmdArgs []string
 	if config.Browser[config.Domain[selector].Browser].Script == "" {
 		// Exe + "FQDN"
@@ -151,11 +152,13 @@ func run() (err error) {
 	}
 
 	cmd := exec.Command(command, cmdArgs...)
-	err = cmd.Start()
-	if err != nil {
-		os.Exit(1)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Noctty: true,
 	}
-	err = cmd.Process.Release()
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	err = cmd.Start()
 	if err != nil {
 		os.Exit(1)
 	}
